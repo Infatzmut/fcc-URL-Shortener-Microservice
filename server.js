@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose');
 const app = express();
-const dns = require('dns');
+const validUrl = require('valid-url');
 // Basic Configuration
 const port = process.env.PORT || 3000;
 let counter = 0;
@@ -29,29 +29,30 @@ app.post('/api/shorturl/new', (req, res) => {
   if(!url) {
     res.json({"error":"Invalid url"})
   } else {
-    dns.lookup(url, (err, address, family) => {
-      if(err) {
-        console.error(err);
-        res.json({"error": "invalid url"});
-      } else {
-        counter++;
-        const original_url = `http://${url}`;
-        const short_url = counter;
-        let variable = {"url": original_url, "shortUrl": short_url};
-        savedData.push(variable);
-        res.json({"msg": "saved"});
-      } 
-    })
+    if(!validUrl.isWebUri(url)) {
+      res.status(401).json({"error":"invalid URL"});
+    } else {
+      counter++;
+      const short_url = counter;
+      let variable = {"original_url": url, "shortUrl": short_url};
+      savedData.push(variable);
+      res.json({"msg": "saved"});
+    } 
   }
 })
 
-app.get('/api/shorturl/:url', (req, res) => {
-  const {url} = req.params;
-  console.info("urls guardadas: ");
-  console.info(savedData);
-  let doc = savedData.filter(data => data.shortUrl == url)
-  console.log(doc);
-  res.redirect(doc[0].url);
+app.get('/api/shorturl/:url?', (req, res) => {
+  console.log(req.params)
+  if(!req.params.url || req.params.url == 'undefined') {
+    res.json({"msg": "Invalid url"});
+  } else {
+    const {url} = req.params;
+    console.info("urls guardadas: ");
+    console.info(savedData);
+    let doc = savedData.filter(data => data.shortUrl == url)
+    console.log(doc);
+    res.redirect(doc[0].url);
+  }
 });
 
 app.listen(port, function() {
